@@ -9,8 +9,10 @@
   },
   "devDependencies": {
     "@changesets/cli": "2.27.1",
+    "@changesets/get-github-info": "0.6.0",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "dotenv": "16.4.4",
     "prettier": "^3.1.1",
     "turbo": "latest"
   },
