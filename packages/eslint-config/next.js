@@ -2,7 +2,7 @@ const { resolve } = require("node:path");
 
 const project = resolve(process.cwd(), "tsconfig.json");
 
-// console.log('test1')
+console.log('test1')
 // console.log('test2')
 /** @type {import("eslint").Linter.Config} */
 module.exports = {
