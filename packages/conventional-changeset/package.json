@@ -1,0 +1,26 @@
+{
+  "name": "@repo/conventional-changeset",
+  "version": "0.0.0",
+  "private": true,
+  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup --format cjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "20.11.19",
+    "colorette": "2.0.20",
+    "rimraf": "5.0.5",
+    "tsup": "8.0.2"
+  },
+  "tsup": {
+    "entry": {
+      "index": "src/index.ts"
+    },
+    "splitting": false,
+    "sourcemap": false,
+    "clean": true,
+    "dts": true
+  }
+}

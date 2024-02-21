@@ -1,12 +1,13 @@
 {
-  "name": "conventional-commits-changesets-turbo",
+  "name": "conventional-commits-changesets",
   "private": true,
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "build-packages": "turbo lint build",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "changeset-version": "changeset add && changeset version"
+    "changeset-version": "changeset && changeset version"
   },
   "devDependencies": {
     "@changesets/cli": "2.27.1",
