@@ -2,10 +2,10 @@
   "name": "conventional-commits-changesets",
   "private": true,
   "scripts": {
-    "build": "turbo build",
+    "build": "turbo run build-tsup && turbo run build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "build-packages": "turbo lint build",
+    "build-packages": "turbo lint && yarn build",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "changeset-version": "changeset && changeset version"
   },
