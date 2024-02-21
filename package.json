@@ -7,7 +7,7 @@
     "lint": "turbo lint",
     "build-packages": "turbo lint && yarn build",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "changeset-version": "changeset && changeset version"
+    "changeset-version": "yarn build-packages && changeset add && changeset version"
   },
   "devDependencies": {
     "@changesets/changelog-git": "0.2.0",

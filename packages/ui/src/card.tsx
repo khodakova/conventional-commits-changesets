@@ -9,7 +9,7 @@ export function Card({
   children: React.ReactNode;
   href: string;
 }): JSX.Element {
-  console.log('imit change')
+  console.log('imit change2')
   return (
     <a
       className={className}
