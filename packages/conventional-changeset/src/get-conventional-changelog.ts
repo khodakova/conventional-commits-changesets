@@ -3,9 +3,12 @@ import * as path from 'path';
 import { getPackagesSync } from '@manypkg/get-packages';
 import { Changeset } from '@changesets/types';
 import {
-  associateCommitsToConventionalCommitMessages,
+  CommitsToChangesets,
   conventionalMessagesWithCommitsToChangesets,
-  getCommitsSinceRef, getCommitsWithInfo,
+  defaultCommitTypes,
+  getCommitsSinceRef,
+  getCommitsWithGitInfo,
+  pickCommitInfoForChangelog,
 } from './utils';
 
 const CHANGESET_CONFIG_LOCATION = path.join('.changeset', 'config.json');
@@ -28,23 +31,39 @@ const getConventionalChangelog = async (changeset: Changeset) => {
   const { baseBranch = 'main' } = changesetConfig;
 
   const commitsSinceBase = getCommitsSinceRef(baseBranch);
-  const commitsWithInfo = getCommitsWithInfo(commitsSinceBase);
-  const changelogMessagesWithAssociatedCommits = associateCommitsToConventionalCommitMessages(commitsWithInfo);
+  const commitsWithGitInfo = getCommitsWithGitInfo(commitsSinceBase);
+  const commitsMatchedToSection = pickCommitInfoForChangelog(commitsWithGitInfo);
 
-  // todo добавить в обработку коммитов разнесение их по различным секциям в зависимости от типа коммита
-  const changesets = conventionalMessagesWithCommitsToChangesets(changelogMessagesWithAssociatedCommits, {
+  const changesets = conventionalMessagesWithCommitsToChangesets(commitsMatchedToSection, {
     ignoredFiles: [],
     packages,
-  })
+  });
 
   const inChangeset = changeset.releases.map((x) => x.name);
 
   const matchedCommitsForCurrentChangeset = changesets.filter((out) => {
-    const res = out.releases.some((x) => inChangeset.includes(x.name));
+    const res = out?.releases.some((x) => inChangeset.includes(x.name || ''));
     return res;
   });
 
-  return matchedCommitsForCurrentChangeset.map((x) => x.summary).join('');
+  const commitsToSections: Record<string, CommitsToChangesets[]> = {};
+
+  defaultCommitTypes.forEach((commitType) => {
+    const matchedToCommitType = matchedCommitsForCurrentChangeset
+      .filter((x) => x?.sectionType === commitType.type);
+    if (matchedToCommitType.length) {
+      commitsToSections[commitType.sectionType] = matchedToCommitType;
+    }
+  })
+
+  if (matchedCommitsForCurrentChangeset.some((x) => x.sectionType === null)) {
+    commitsToSections['Other changes'] = matchedCommitsForCurrentChangeset.filter((x) => x.sectionType === null)
+  }
+  const finalChangeset = Object
+    .entries(commitsToSections)
+    .map(([section, commits]) => `${section}:\n${commits.map((x) => x.summary).join(';')}\n`)
+
+  return finalChangeset.join('');
 };
 
 export { getConventionalChangelog };

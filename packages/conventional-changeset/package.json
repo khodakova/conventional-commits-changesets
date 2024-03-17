@@ -1,7 +1,7 @@
 {
   "name": "conventional-changeset",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "module": "dist/index.js",
   "main": "dist/index.js",
   "scripts": {
@@ -24,6 +24,6 @@
     "splitting": false,
     "sourcemap": false,
     "clean": true,
-    "dts": true
+    "dts": false
   }
 }

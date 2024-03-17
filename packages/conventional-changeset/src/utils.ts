@@ -2,84 +2,49 @@ import { execSync } from 'child_process';
 import type { Changeset } from '@changesets/types';
 import type { ManyPkgPackage } from './types';
 
-interface Commit {
+interface CommitGitInfo {
   hash: string,
   shortHash: string,
   commitMessage: string,
 }
 
-interface ConventionalMessagesToCommits {
-  changelogMessage: string,
-  commitHashes: string[],
-  commitShortHashes: string[],
+interface CommitToChangelog extends CommitGitInfo {
+  sectionType: string | null,
+  formattedCommitMessage: string,
+}
+
+export interface CommitsToChangesets extends Changeset {
+  sectionType: string | null,
+  packagesChanged: any[]
 }
 
 export const defaultCommitTypes = [
-  { type: 'feat', section: 'Features' },
-  { type: 'feature', section: 'Features' },
-  { type: 'fix', section: 'Bug Fixes' },
-  { type: 'perf', section: 'Performance Improvements' },
-  { type: 'revert', section: 'Reverts' },
-  { type: 'docs', section: 'Documentation' },
-  { type: 'style', section: 'Styles' },
-  { type: 'chore', section: 'Miscellaneous Chores' },
-  { type: 'refactor', section: 'Code Refactoring' },
-  { type: 'test', section: 'Tests' },
-  { type: 'build', section: 'Build System' },
-  { type: 'ci', section: 'Continuous Integration' },
+  { type: 'feat', sectionType: 'Features' },
+  { type: 'feature', sectionType: 'Features' },
+  { type: 'fix', sectionType: 'Bug Fixes' },
+  { type: 'perf', sectionType: 'Performance Improvements' },
+  { type: 'revert', sectionType: 'Reverts' },
+  { type: 'docs', sectionType: 'Documentation' },
+  { type: 'style', sectionType: 'Styles' },
+  { type: 'chore', sectionType: 'Miscellaneous Chores' },
+  { type: 'refactor', sectionType: 'Code Refactoring' },
+  { type: 'test', sectionType: 'Tests' },
+  { type: 'build', sectionType: 'Build System' },
+  { type: 'ci', sectionType: 'Continuous Integration' },
 ];
 
 export const isBreakingChange = (commit: string) => (
   commit.includes('BREAKING CHANGE:')
-    || defaultCommitTypes.some((commitType) => commit.match(new RegExp(`^${commitType.type}(?:\(.*\))?!:`)))
+  || defaultCommitTypes.some((commitType) => commit.match(new RegExp(`^${commitType.type}(?:\(.*\))?!:`)))
 );
 
 export const isConventionalCommit = (commit: string) =>
   defaultCommitTypes.some((commitType) => commit.match(new RegExp(`^${commitType.type}\\s*(?:\\(.*\\))?!?:`)));
 
-/* Attempts to associate non-conventional commits to the nearest conventional commit */
-export const associateCommitsToConventionalCommitMessages = (commits: Commit[]): ConventionalMessagesToCommits[] => commits
-  .reduce((acc, curr) => {
-    if (!acc.length) {
-      return [
-        {
-          changelogMessage: curr.commitMessage,
-          commitHashes: [curr.hash],
-          commitShortHashes: [curr.shortHash],
-        },
-      ];
-    }
-    if (isConventionalCommit(curr.commitMessage)) {
-      if (isConventionalCommit(acc[acc.length - 1].changelogMessage)) {
-        return [
-          ...acc,
-          {
-            changelogMessage: curr.commitMessage,
-            commitHashes: [curr.hash],
-            commitShortHashes: [curr.shortHash],
-          },
-        ];
-      }
-      return [
-        ...acc.slice(0, acc.length - 1),
-        {
-          changelogMessage: curr.commitMessage,
-          commitHashes: [...acc[acc.length - 1].commitHashes, curr.hash],
-          commitShortHashes: [...acc[acc.length - 1].commitShortHashes, curr.shortHash],
-        },
-      ];
-    }
-    return [
-      ...acc.slice(0, acc.length - 1),
-      {
-        ...acc[acc.length - 1],
-        commitHashes: [...acc[acc.length - 1].commitHashes, curr.hash],
-        commitShortHashes: [...acc[acc.length - 1].commitShortHashes, curr.shortHash],
-      },
-    ];
-  }, [] as ConventionalMessagesToCommits[]);
-
-export const getFilesChangedSince = (opts: { from: string, to: string }) => execSync(`git diff --name-only ${opts.from}~1...${opts.to}`)
+export const getFilesChangedSince = (opts: {
+  from: string,
+  to: string
+}) => execSync(`git diff --name-only ${opts.from}~1...${opts.to}`)
   .toString()
   .trim()
   .split('\n');
@@ -89,34 +54,61 @@ export const getRepoRoot = () => execSync('git rev-parse --show-toplevel')
   .trim()
   .replace(/\n|\r/g, '');
 
-export const conventionalMessagesWithCommitsToChangesets = (
-  conventionalMessagesToCommits: ConventionalMessagesToCommits[],
-  options: { ignoredFiles?: (string | RegExp)[], packages: ManyPkgPackage[] },
-) => {
-  const { ignoredFiles = [], packages } = options;
+export const pickCommitInfoForChangelog = (commits: CommitGitInfo[]): CommitToChangelog[] => {
+  return commits.map((commit) => {
+    if (isConventionalCommit(commit.commitMessage)) {
+      const sectionType = defaultCommitTypes.find((x) => commit.commitMessage.includes(x.type))?.type || null;
+      return {
+        ...commit,
+        sectionType,
+        formattedCommitMessage: commit.commitMessage.replaceAll(/\w{1,}\s*(?:\(.*\))?!?:/g, '').trim()
+      }
+    }
+    return {
+      ...commit,
+      sectionType: null,
+      formattedCommitMessage: commit.commitMessage,
+    }
+  })
+}
 
-  return conventionalMessagesToCommits
-    .map((entry) => {
+export const conventionalMessagesWithCommitsToChangesets = (
+  conventionalMessagesToCommits: CommitToChangelog[],
+  options: { ignoredFiles?: (string | RegExp)[], packages: ManyPkgPackage[] },
+): CommitsToChangesets[] => {
+  const { ignoredFiles = [], packages } = options;
+  const commitsToChangeset: CommitsToChangesets[] = []
+
+  conventionalMessagesToCommits
+    .forEach((entry) => {
       const filesChanged = getFilesChangedSince({
-        from: entry.commitHashes[0],
-        to: entry.commitHashes[entry.commitHashes.length - 1],
+        from: entry.hash,
+        to: entry.hash,
       }).filter((file) => ignoredFiles.every((ignoredPattern) => !file.match(ignoredPattern)));
+
+      // console.log('I AM COMMIT', entry.commitMessage, filesChanged)
 
       const packagesChanged = packages
         .filter((pkg) => filesChanged
           .some((file) => file.match(pkg.dir.replace(`${getRepoRoot()}/`, ''))));
-      if (packagesChanged.length === 0) return null;
 
-      return {
+      // console.log('I CHANGED', packagesChanged)
+
+      if (packagesChanged.length === 0) return;
+
+      commitsToChangeset.push({
+        // @ts-ignore
         releases: packagesChanged.map((pkg) => ({
-          name: pkg.packageJson.name,
+          name: pkg.packageJson.name ?? '',
           type: '',
         })),
-        summary: `- ${entry.commitShortHashes} ${entry.changelogMessage}\n`,
+        sectionType: entry.sectionType,
+        summary: `- [${entry.shortHash}]: ${entry.formattedCommitMessage}\n`,
         packagesChanged,
-      };
+      })
     })
-    .filter(Boolean) as Changeset[];
+
+  return commitsToChangeset;
 };
 
 export const gitFetch = (branch: string) => {
@@ -157,11 +149,14 @@ export const getCommitsSinceRef = (branch: string) => {
 
 /**
  * Obtaining detailed information about commits
+ * - hash
+ * - shortHash
+ * - commitMessage
  * @param commitsHashes
  */
-export const getCommitsWithInfo = (commitsHashes: string[]) => {
+export const getCommitsWithGitInfo = (commitsHashes: string[]): CommitGitInfo[] => {
   return commitsHashes.map((hash) => {
-    const commitContent = execSync(`git log -n 1 --pretty=format:"%B[%h]" ${hash}`).toString();
+    const commitContent = execSync(`git log -n 1 --pretty=format:"%B%h" ${hash}`).toString();
     const [commitMessage, shortHash] = commitContent.split('\n');
 
     return ({

@@ -12,8 +12,6 @@ const getReleaseLine = async (changeset, type) => {
         changeset.commit ? `${changeset.commit.slice(0, 7)}: ` : ''
     }${firstLine}\n${extractedConventionalCommits}`;
 
-    console.log('SUMMARY', summary)
-
     if (futureLines.length > 0) {
         summary += `\n${futureLines.map((l) => `  ${l}`).join('\n')}${extractedConventionalCommits}`;
     }
