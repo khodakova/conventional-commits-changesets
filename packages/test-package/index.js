@@ -1,1 +1,1 @@
-export const testVar = 12345
+export const testVar = 123456
