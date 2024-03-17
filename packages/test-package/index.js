@@ -1,1 +1,1 @@
-export const testVar = 123
+export const testVar = 1234
