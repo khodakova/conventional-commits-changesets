@@ -1,18 +1,24 @@
 require('dotenv').config();
-const { getInfo } = require('@changesets/get-github-info');
+const {getConventionalChangelog} = require('conventional-changeset')
 
 const getReleaseLine = async (changeset, type) => {
     const [firstLine, ...futureLines] = changeset.summary
         .split('\n')
         .map((l) => l.trimRight());
-    let { links } = await getInfo({
-        repo: 'khodakova/conventional-commits-changesets-turbo',
-        commit: changeset.commit,
-    });
-    console.log('LINKS', links)
-    return `- ${links.commit}${links.pull === null ? '' : ` ${links.pull}`}${
-        links.user === null ? '' : ` Thanks ${links.user}!`
-    } - ${firstLine}\n${futureLines.map((l) => `  ${l}`).join('\n')}`;
+
+    const extractedConventionalCommits = await getConventionalChangelog(changeset);
+
+    let summary = `${
+        changeset.commit ? `${changeset.commit.slice(0, 7)}: ` : ''
+    }${firstLine}\n${extractedConventionalCommits}`;
+
+    console.log('SUMMARY', summary)
+
+    if (futureLines.length > 0) {
+        summary += `\n${futureLines.map((l) => `  ${l}`).join('\n')}${extractedConventionalCommits}`;
+    }
+
+    return summary;
 };
 
 const getDependencyReleaseLine = async (changesets, dependenciesUpdated) => {
