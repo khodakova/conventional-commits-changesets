@@ -1,0 +1,10 @@
+{
+  "name": "test-package",
+  "version": "0.0.0",
+  "main": "./index.js",
+  "module": "./index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "5.4.2"
+  }
+}
